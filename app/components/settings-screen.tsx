@@ -1,26 +1,27 @@
 'use client';
 
 import Image from 'next/image';
-import { Bell, ChevronRight, CircleHelp, Eye, LogOut, MapPin, Pencil, ShieldCheck, X } from 'lucide-react';
+import { Bell, ChevronRight, CircleHelp, Crown, LogOut, Pencil, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import type { AppPreferences } from '../lib/demo-data';
 
 type SettingsScreenProps = {
   initialName: string;
   photoPreview: string;
+  isVipActive: boolean;
+  onToggleVip: () => void;
   onLogout: () => void;
 };
 
-export default function SettingsScreen({ initialName, photoPreview, onLogout }: SettingsScreenProps) {
+export default function SettingsScreen({ initialName, photoPreview, isVipActive, onToggleVip, onLogout }: SettingsScreenProps) {
   const [name, setName] = useState(initialName || 'You');
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const [age, setAge] = useState('32');
   const [height, setHeight] = useState('170');
   const [weight, setWeight] = useState('65');
-  const [preferences, setPreferences] = useState<AppPreferences>({ pushNotifications: true, showDistance: true, visibleOnMap: true });
+  const [pushNotifications, setPushNotifications] = useState(true);
 
-  const togglePreference = (key: keyof AppPreferences) => setPreferences((current) => ({ ...current, [key]: !current[key] }));
+  const togglePushNotifications = () => setPushNotifications((current) => !current);
 
   const saveProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -37,17 +38,24 @@ export default function SettingsScreen({ initialName, photoPreview, onLogout }: 
         <h1 id="settings-title">設定</h1>
       </header>
       <div className="feature-scroll settings-scroll">
+        <button className={isVipActive ? 'vip-pass-banner active' : 'vip-pass-banner'} type="button" aria-pressed={isVipActive} onClick={onToggleVip}>
+          <span className="vip-pass-icon">{isVipActive ? <Crown size={24} aria-hidden="true" /> : <Sparkles size={24} aria-hidden="true" />}</span>
+          <span className="vip-pass-copy">
+            <strong>{isVipActive ? 'VIPパス利用中' : 'VIPパスで機能を解放'}</strong>
+            <small>{isVipActive ? 'タップでOFFにできます（デモ）' : '目隠し・任意位置・通知解除・イベント作成が使えます'}</small>
+          </span>
+          <span className="vip-pass-state">{isVipActive ? 'ON' : 'OFF'}</span>
+        </button>
+
         <article className="settings-profile">
           {photoPreview ? <span className="settings-photo" style={{ backgroundImage: `url(${photoPreview})` }} /> : <Image src="/assets/profiles/kenji.png" alt="プロフィール写真" width={160} height={160} />}
-          <div><h2>{name}</h2><p>{age}歳 · {height}cm · {weight}kg</p><span>プロフィール公開中</span></div>
+          <div><h2>{name}</h2><p>{age}歳 · {height}cm · {weight}kg</p>{isVipActive && <span>VIPパス利用中</span>}</div>
           <button type="button" aria-label="プロフィールを編集" onClick={() => { setDraftName(name); setEditing(true); }}><Pencil size={17} /></button>
         </article>
 
         <section className="settings-group" aria-labelledby="privacy-settings">
           <h2 id="privacy-settings">通知とプライバシー</h2>
-          <label className="settings-toggle"><span><Bell size={18} /><i><strong>プッシュ通知</strong><small>新しい反応をお知らせ</small></i></span><input type="checkbox" checked={preferences.pushNotifications} onChange={() => togglePreference('pushNotifications')} /></label>
-          <label className="settings-toggle"><span><MapPin size={18} /><i><strong>地図に表示</strong><small>近くの人にプロフィールを表示</small></i></span><input type="checkbox" checked={preferences.visibleOnMap} onChange={() => togglePreference('visibleOnMap')} /></label>
-          <label className="settings-toggle"><span><Eye size={18} /><i><strong>距離を表示</strong><small>プロフィールにおおよその距離を表示</small></i></span><input type="checkbox" checked={preferences.showDistance} onChange={() => togglePreference('showDistance')} /></label>
+          <label className="settings-toggle"><span><Bell size={18} /><i><strong>プッシュ通知</strong><small>新しい反応をお知らせ</small></i></span><input type="checkbox" checked={pushNotifications} onChange={togglePushNotifications} /></label>
         </section>
 
         <section className="settings-group settings-links" aria-label="サポート">

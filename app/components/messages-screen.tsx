@@ -1,17 +1,18 @@
 'use client';
 
 import Image from 'next/image';
-import { ArrowLeft, CheckCheck, MoreHorizontal, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCheck, MoreHorizontal, Send } from 'lucide-react';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { getProfile, initialConversations, type Conversation } from '../lib/demo-data';
 
 type MessagesScreenProps = {
   requestedProfileId: string | null;
+  onOpenProfile: (profileId: string) => void;
   onUnreadChange: (count: number) => void;
   onConsumeProfileRequest: () => void;
 };
 
-export default function MessagesScreen({ requestedProfileId, onUnreadChange, onConsumeProfileRequest }: MessagesScreenProps) {
+export default function MessagesScreen({ requestedProfileId, onOpenProfile, onUnreadChange, onConsumeProfileRequest }: MessagesScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -20,7 +21,7 @@ export default function MessagesScreen({ requestedProfileId, onUnreadChange, onC
   const requestedConversationId = requestedProfileId
     ? conversations.find((conversation) => conversation.profileId === requestedProfileId)?.id ?? null
     : null;
-  const effectiveActiveId = activeId ?? requestedConversationId;
+  const effectiveActiveId = requestedConversationId ?? activeId;
   const unreadCount = conversations.reduce(
     (sum, conversation) => sum + (conversation.id === effectiveActiveId ? 0 : conversation.unread),
     0,
@@ -66,13 +67,14 @@ export default function MessagesScreen({ requestedProfileId, onUnreadChange, onC
       <section className="chat-screen" aria-labelledby="chat-title">
         <header className="chat-header">
           <button type="button" aria-label="会話一覧へ戻る" onClick={closeConversation}><ArrowLeft size={22} /></button>
-          <Image src={profile.image} alt="" width={96} height={96} />
-          <div><h1 id="chat-title">{profile.name}</h1><p><span />オンライン</p></div>
+          <button className="chat-profile-button" type="button" onClick={() => onOpenProfile(profile.id)}>
+            <Image src={profile.image} alt="" width={96} height={96} />
+            <span><strong id="chat-title">{profile.name}</strong><small><i />オンライン</small></span>
+          </button>
           <button type="button" aria-label="会話メニュー"><MoreHorizontal size={22} /></button>
         </header>
         <div className="chat-messages" aria-live="polite">
           <p className="chat-day">今日</p>
-          <div className="match-note"><Sparkles size={14} /><span>{profile.name}さんとつながりました</span></div>
           {activeConversation.messages.map((message) => (
             <div key={message.id} className={`message-row ${message.sender}`}>
               <div className="message-bubble">{message.body}</div>
@@ -105,7 +107,15 @@ export default function MessagesScreen({ requestedProfileId, onUnreadChange, onC
             <button key={conversation.id} className="conversation-row" type="button" onClick={() => openConversation(conversation.id)}>
               <span className="conversation-avatar"><Image src={profile.image} alt="" width={128} height={128} /><i /></span>
               <span className="conversation-copy"><strong>{profile.name}</strong><span>{latest.body}</span></span>
-              <span className="conversation-meta"><time>{latest.time}</time>{conversation.unread > 0 && <b>{conversation.unread}</b>}</span>
+              <span className="conversation-meta">
+                <time>{latest.time}</time>
+                {conversation.unread > 0 && (
+                  <>
+                    <b className="conversation-unread-badge" aria-hidden="true">{conversation.unread}</b>
+                    <span className="sr-only">未読{conversation.unread}件</span>
+                  </>
+                )}
+              </span>
             </button>
           );
         })}

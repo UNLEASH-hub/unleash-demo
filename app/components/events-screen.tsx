@@ -1,17 +1,36 @@
 'use client';
 
-import { CalendarDays, Check, MapPin, Users, X } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, Check, MapPin, Plus, Users, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { events, type EventCategory, type EventItem } from '../lib/demo-data';
+import EventCreationFlow from './event-creation-flow';
 
 type EventView = 'recommended' | 'joined';
 type EventFilter = 'すべて' | EventCategory;
 
-export default function EventsScreen() {
+type EventsScreenProps = {
+  isVipActive: boolean;
+  onRequireVip: () => void;
+  onCreationModeChange: (active: boolean) => void;
+};
+
+const eventFilters: EventFilter[] = ['すべて', '飲み会', 'カフェ', '食事会', '遊び', 'アクティビティ', 'ナイト'];
+
+export default function EventsScreen({ isVipActive, onRequireVip, onCreationModeChange }: EventsScreenProps) {
   const [view, setView] = useState<EventView>('recommended');
   const [filter, setFilter] = useState<EventFilter>('すべて');
   const [joinedIds, setJoinedIds] = useState<string[]>(['morning-walk']);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
+  const [showPreflight, setShowPreflight] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [mapAccepted, setMapAccepted] = useState(false);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const closePreflightRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (showPreflight) closePreflightRef.current?.focus({ preventScroll: true });
+  }, [showPreflight]);
 
   const filteredEvents = events.filter((event) => {
     const matchesView = view === 'recommended' || joinedIds.includes(event.id);
@@ -23,12 +42,48 @@ export default function EventsScreen() {
     setJoinedIds((current) => current.includes(eventId) ? current.filter((id) => id !== eventId) : [...current, eventId]);
   };
 
+  const closePreflight = () => {
+    setShowPreflight(false);
+    setTermsAccepted(false);
+    setMapAccepted(false);
+    requestAnimationFrame(() => createButtonRef.current?.focus({ preventScroll: true }));
+  };
+
+  const startCreating = () => {
+    setShowPreflight(false);
+    setIsCreating(true);
+    onCreationModeChange(true);
+  };
+
+  const openCreateFlow = () => {
+    if (!isVipActive) {
+      onRequireVip();
+      return;
+    }
+    setShowPreflight(true);
+  };
+
+  const exitCreating = () => {
+    setIsCreating(false);
+    setTermsAccepted(false);
+    setMapAccepted(false);
+    onCreationModeChange(false);
+    requestAnimationFrame(() => createButtonRef.current?.focus({ preventScroll: true }));
+  };
+
+  if (isCreating) return <EventCreationFlow onExit={exitCreating} />;
+
   return (
     <section className="feature-screen" aria-labelledby="events-title">
-      <header className="feature-header">
-        <p className="eyebrow">DISCOVER</p>
-        <h1 id="events-title">イベント</h1>
-        <p>新しいきっかけを、リアルな場所から。</p>
+      <header className="feature-header event-feature-header">
+        <div className="event-feature-copy">
+          <p className="eyebrow">DISCOVER</p>
+          <h1 id="events-title">イベント</h1>
+          <p>新しいきっかけを、リアルな場所から。</p>
+        </div>
+        <button ref={createButtonRef} className="event-create-button" type="button" aria-haspopup="dialog" onClick={openCreateFlow}>
+          <Plus size={17} aria-hidden="true" />新規登録
+        </button>
       </header>
 
       <div className="segmented-control" aria-label="イベント表示">
@@ -37,7 +92,7 @@ export default function EventsScreen() {
       </div>
 
       <div className="filter-scroll" aria-label="イベントカテゴリ">
-        {(['すべて', '交流', 'アウトドア', 'カルチャー'] as EventFilter[]).map((category) => (
+        {eventFilters.map((category) => (
           <button key={category} className={filter === category ? 'active' : ''} type="button" aria-pressed={filter === category} onClick={() => setFilter(category)}>
             {category}
           </button>
@@ -90,6 +145,35 @@ export default function EventsScreen() {
             <button className={`sheet-action ${joinedIds.includes(selectedEvent.id) ? 'secondary' : ''}`} type="button" onClick={() => toggleJoined(selectedEvent.id)}>
               {joinedIds.includes(selectedEvent.id) ? '参加をキャンセル' : 'このイベントに参加する'}
             </button>
+          </section>
+        </div>
+      )}
+
+      {showPreflight && (
+        <div
+          className="sheet-backdrop event-preflight-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePreflight();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') closePreflight();
+          }}
+        >
+          <section className="event-preflight-sheet" role="dialog" aria-modal="true" aria-labelledby="event-preflight-title">
+            <header>
+              <h2 id="event-preflight-title">イベントを作成する前に</h2>
+              <button ref={closePreflightRef} type="button" aria-label="事前確認を閉じる" onClick={closePreflight}><X size={23} aria-hidden="true" /></button>
+            </header>
+            <label className="event-consent-row">
+              <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} />
+              <span><strong>イベント募集の利用規約に同意します</strong><small>健全なコミュニティのためのルールを守ります</small></span>
+            </label>
+            <label className="event-consent-row">
+              <input type="checkbox" checked={mapAccepted} onChange={(event) => setMapAccepted(event.target.checked)} />
+              <span><strong>マップへの表示について理解しました</strong><small>位置情報は多少ズレる場合がありますが、現在位置のマップ上にイベントが設置・表示されます</small></span>
+            </label>
+            <button className="event-preflight-submit" type="button" disabled={!termsAccepted || !mapAccepted} onClick={startCreating}>作成画面へ進む</button>
           </section>
         </div>
       )}

@@ -8,19 +8,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
+import { profiles } from '../lib/demo-data';
 
 type NotificationTab = 'actions' | 'footprints' | 'favorites';
 type FootprintDirection = 'received' | 'sent';
 type ActionType = 'message' | 'favorite' | 'meet';
-
-type Profile = {
-  id: string;
-  name: string;
-  age: number;
-  height: number;
-  weight: number;
-  image: string;
-};
 
 type ActionItem = {
   profileId: string;
@@ -28,14 +20,6 @@ type ActionItem = {
   time: string;
   locked?: boolean;
 };
-
-const profiles: Profile[] = [
-  { id: 'kenji', name: 'Kenji', age: 28, height: 175, weight: 68, image: '/assets/profiles/kenji.png' },
-  { id: 'sota', name: 'Sota', age: 27, height: 172, weight: 65, image: '/assets/profiles/sota.png' },
-  { id: 'taka', name: 'Taka', age: 25, height: 170, weight: 60, image: '/assets/profiles/taka.png' },
-  { id: 'dai', name: 'Dai', age: 34, height: 183, weight: 79, image: '/assets/profiles/dai.png' },
-  { id: 'shin', name: 'Shin', age: 26, height: 165, weight: 55, image: '/assets/profiles/shin.png' },
-];
 
 const actions: ActionItem[] = [
   { profileId: 'kenji', type: 'message', time: '26分前' },
@@ -78,7 +62,12 @@ const ActionBadge = ({ type }: { type: ActionType }) => {
   );
 };
 
-export default function NotificationScreen() {
+type NotificationScreenProps = {
+  isVipActive: boolean;
+  onOpenProfile: (profileId: string) => void;
+};
+
+export default function NotificationScreen({ isVipActive, onOpenProfile }: NotificationScreenProps) {
   const [activeTab, setActiveTab] = useState<NotificationTab>('actions');
   const [footprintDirection, setFootprintDirection] = useState<FootprintDirection>('received');
 
@@ -113,26 +102,33 @@ export default function NotificationScreen() {
           <div className="notification-list" role="tabpanel" aria-label="アクション通知">
             {actions.map((item) => {
               const profile = profileById(item.profileId);
+              const isLocked = Boolean(item.locked && !isVipActive);
               return (
-                <article key={`${item.profileId}-${item.type}`} className={item.locked ? 'notification-row locked' : 'notification-row'}>
+                <button
+                  key={`${item.profileId}-${item.type}`}
+                  className={isLocked ? 'notification-row locked' : 'notification-row'}
+                  type="button"
+                  disabled={isLocked}
+                  onClick={() => onOpenProfile(profile.id)}
+                >
                   <div className="avatar-wrap">
-                    <Image className="profile-avatar" src={profile.image} alt={item.locked ? '' : `${profile.name}のプロフィール写真`} width={160} height={160} />
+                    <Image className="profile-avatar" src={profile.image} alt={isLocked ? '' : `${profile.name}のプロフィール写真`} width={160} height={160} />
                     <ActionBadge type={item.type} />
                   </div>
                   <div className="notification-copy">
                     <p className="notification-main">
-                      <strong>{item.locked ? '???' : profile.name}</strong>
-                      {item.locked && <LockKeyhole size={13} aria-label="VIP限定" />}
+                      <strong>{isLocked ? '???' : profile.name}</strong>
+                      {isLocked && <LockKeyhole size={13} aria-label="VIP限定" />}
                       <span>{actionCopy[item.type]}</span>
                     </p>
-                    {item.locked ? (
+                    {isLocked ? (
                       <p className="vip-copy"><Sparkles size={13} />VIPパスで確認できます</p>
                     ) : (
                       <p className="profile-meta">{profile.height}cm · {profile.weight}kg · {profile.age}歳</p>
                     )}
                   </div>
                   <time>{item.time}</time>
-                </article>
+                </button>
               );
             })}
           </div>
@@ -160,14 +156,14 @@ export default function NotificationScreen() {
               {footprintItems.map((item) => {
                 const profile = profileById(item.profileId);
                 return (
-                  <article key={`${footprintDirection}-${item.profileId}`} className="profile-row">
+                  <button key={`${footprintDirection}-${item.profileId}`} className="profile-row" type="button" onClick={() => onOpenProfile(profile.id)}>
                     <Image className="profile-avatar" src={profile.image} alt={`${profile.name}のプロフィール写真`} width={160} height={160} />
                     <div>
                       <h2>{profile.name}</h2>
                       <p>{profile.height}cm · {profile.weight}kg · {profile.age}歳</p>
                     </div>
                     <time>{item.time}</time>
-                  </article>
+                  </button>
                 );
               })}
             </div>
@@ -180,11 +176,13 @@ export default function NotificationScreen() {
               const profile = profileById(id);
               return (
                 <article key={id} className="favorite-row">
-                  <Image className="profile-avatar" src={profile.image} alt={`${profile.name}のプロフィール写真`} width={160} height={160} />
-                  <div>
-                    <h2>{profile.name}</h2>
-                    <p>{profile.age}歳 · {profile.height}cm · {profile.weight}kg</p>
-                  </div>
+                  <button className="favorite-profile-button" type="button" onClick={() => onOpenProfile(profile.id)}>
+                    <Image className="profile-avatar" src={profile.image} alt={`${profile.name}のプロフィール写真`} width={160} height={160} />
+                    <span>
+                      <strong>{profile.name}</strong>
+                      <small>{profile.age}歳 · {profile.height}cm · {profile.weight}kg</small>
+                    </span>
+                  </button>
                   <button type="button" disabled aria-label={`${profile.name}へのメッセージ機能は準備中です`}>
                     <MessageCircle size={20} />
                   </button>

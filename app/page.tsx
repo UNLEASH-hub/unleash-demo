@@ -1,10 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import AppShell from './components/app-shell';
 
-type AuthMode = 'login' | 'register' | 'registered' | 'notifications';
+type AuthMode = 'login' | 'register' | 'registered' | 'notifications' | 'forgot-password' | 'reset-email-sent';
 type RegistrationStep = 1 | 2 | 3;
 type VerificationStage = 'phone' | 'code';
 type ErrorKey =
@@ -79,6 +79,21 @@ export default function Home() {
   const [recruitment, setRecruitment] = useState<string[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [message, setMessage] = useState('');
+  const resetHeadingRef = useRef<HTMLHeadingElement>(null);
+  const forgotPasswordRef = useRef<HTMLButtonElement>(null);
+  const previousModeRef = useRef<AuthMode>('login');
+
+  useEffect(() => {
+    if (mode === 'forgot-password' || mode === 'reset-email-sent') {
+      resetHeadingRef.current?.focus();
+    } else if (
+      mode === 'login' &&
+      (previousModeRef.current === 'forgot-password' || previousModeRef.current === 'reset-email-sent')
+    ) {
+      forgotPasswordRef.current?.focus();
+    }
+    previousModeRef.current = mode;
+  }, [mode]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -122,6 +137,20 @@ export default function Home() {
     setErrors(nextErrors);
     setMessage('');
     if (Object.keys(nextErrors).length === 0) switchMode('notifications');
+  };
+
+  const handleResetEmail = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!emailPattern.test(email)) {
+      setErrors({ email: '正しいメールアドレスを入力してください。' });
+      const emailInput = event.currentTarget.elements.namedItem('resetEmail');
+      if (emailInput instanceof HTMLInputElement) emailInput.focus();
+      return;
+    }
+
+    // Screen preview only: no email is sent and no account data is changed.
+    switchMode('reset-email-sent');
   };
 
   const handleAccountStep = (event: FormEvent<HTMLFormElement>) => {
@@ -286,8 +315,59 @@ export default function Home() {
                 <span>はじめての方</span>
                 <button type="button" onClick={() => switchMode('register')}>新規登録</button>
               </div>
+              <button
+                ref={forgotPasswordRef}
+                className="forgot-password-link"
+                type="button"
+                onClick={() => switchMode('forgot-password')}
+              >
+                パスワードをお忘れの方
+              </button>
             </section>
           </>
+        )}
+
+        {mode === 'forgot-password' && (
+          <section className="registration-panel" aria-labelledby="reset-password-title">
+            <button className="back-button" type="button" onClick={() => switchMode('login')}>← 戻る</button>
+            <h1 ref={resetHeadingRef} id="reset-password-title" className="registration-title reset-password-title" tabIndex={-1}>
+              パスワードの再設定
+            </h1>
+            <p className="registration-description">
+              ご登録のメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
+            </p>
+            <form className="registration-form" aria-label="パスワード再設定" onSubmit={handleResetEmail} noValidate>
+              <label className="registration-field">
+                <span>メールアドレス</span>
+                <input
+                  name="resetEmail"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="example@email.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'reset-email-error' : undefined}
+                />
+                {errors.email && <small id="reset-email-error" className="field-error" role="alert">{errors.email}</small>}
+              </label>
+              <button className="primary-button" type="submit">再設定メールを送信</button>
+            </form>
+          </section>
+        )}
+
+        {mode === 'reset-email-sent' && (
+          <section className="registration-panel completion-panel" aria-labelledby="reset-email-sent-title">
+            <div className="completion">
+              <div className="completion-icon" aria-hidden="true">✓</div>
+              <h1 ref={resetHeadingRef} id="reset-email-sent-title" tabIndex={-1}>メールを送信しました</h1>
+              <p role="status">パスワード再設定用のメールを送信しました。メール内のリンクから変更してください。</p>
+              <button className="primary-button" type="button" onClick={() => switchMode('login')}>
+                ログイン画面へ戻る
+              </button>
+            </div>
+          </section>
         )}
 
         {mode === 'register' && (
