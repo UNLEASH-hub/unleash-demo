@@ -57,6 +57,7 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
   const composerRef = useRef<HTMLDialogElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const composerTriggerRef = useRef<HTMLButtonElement>(null);
+  const isNearbyMasked = !visibleOnMap && !isVipActive;
 
   useEffect(() => {
     const dialog = locationDialogRef.current;
@@ -141,10 +142,6 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
   };
 
   const toggleMaskMode = () => {
-    if (!isVipActive) {
-      onRequireVip();
-      return;
-    }
     onVisibleOnMapChange(!visibleOnMap);
   };
 
@@ -157,6 +154,19 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
     setDraftLocation(null);
     setLocationStep('custom');
   };
+
+  const maskNotice = isNearbyMasked && (
+    <div className="nearby-mask-overlay">
+      <div className="nearby-mask-notice">
+        <EyeOff size={28} aria-hidden="true" />
+        <p role="status">無料版では目隠し中に周囲を閲覧できません</p>
+        <div className="nearby-mask-actions">
+          <button type="button" onClick={() => onVisibleOnMapChange(true)}>目隠しを解除</button>
+          <button type="button" onClick={onRequireVip}>VIPパスを確認</button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <section className="nearby-screen" aria-label="近くの人">
@@ -187,7 +197,7 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
           </div>
         </header>
 
-        <div className="map-canvas" aria-label="渋谷周辺のデモ地図">
+        <div className={`map-canvas${isNearbyMasked ? ' nearby-masked' : ''}`} inert={isNearbyMasked} aria-hidden={isNearbyMasked} aria-label="渋谷周辺のデモ地図">
           <div className="map-scene" style={{ transform: `translate(${50 - mapCenter.left}%, ${50 - mapCenter.top}%)` }}>
             <div className="map-water" aria-hidden="true" />
             <span className="map-label label-shibuya">渋谷</span>
@@ -209,6 +219,8 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
             ))}
           </div>
         </div>
+
+        {maskNotice}
 
         <div className="map-controls">
           <div className="map-action-bar" role="group" aria-label="地図の操作">
@@ -239,47 +251,50 @@ export default function MapScreen({ initialFocusProfileId, isVipActive, sentProf
 
       <div className="shout-panel nearby-panel" id="nearby-panel-shouts" role="tabpanel" aria-labelledby="nearby-tab-shouts" hidden={activeTab !== 'shouts'}>
         <h1 className="shout-title">シャウト</h1>
-        <div className="shout-notice" role="status" aria-atomic="true">{notice}</div>
-        <div className="shout-scroll" tabIndex={0} role="region" aria-label="近くのシャウト一覧">
-          {recentShouts.map((shout) => {
-            const profile = getProfile(shout.profileId);
-            const isSent = sentProfileIds.includes(profile.id);
-            return (
-              <article className="shout-row" key={shout.id} aria-label={`${profile.name}のシャウト`}>
-                <button className="shout-profile-button" type="button" onClick={() => onOpenProfile(profile.id)}>
-                  <Image className="shout-avatar" src={profile.image} alt={`${profile.name}のプロフィール写真`} width={112} height={112} />
-                  <span className="shout-copy">
-                    <span className="shout-body">{shout.body}</span>
-                    <span className="shout-meta">
-                      <span>{profile.name} · {profile.height}cm · {profile.weight}kg · {profile.age}歳</span>
-                      <span>{elapsedLabel(shout.elapsedMinutes)}</span>
+        <div className="shout-notice" role="status" aria-atomic="true">{isNearbyMasked ? '' : notice}</div>
+        <div className="shout-content">
+          <div className={`shout-scroll${isNearbyMasked ? ' nearby-masked' : ''}`} inert={isNearbyMasked} aria-hidden={isNearbyMasked} tabIndex={isNearbyMasked ? -1 : 0} role="region" aria-label="近くのシャウト一覧">
+            {recentShouts.map((shout) => {
+              const profile = getProfile(shout.profileId);
+              const isSent = sentProfileIds.includes(profile.id);
+              return (
+                <article className="shout-row" key={shout.id} aria-label={`${profile.name}のシャウト`}>
+                  <button className="shout-profile-button" type="button" onClick={() => onOpenProfile(profile.id)}>
+                    <Image className="shout-avatar" src={profile.image} alt={`${profile.name}のプロフィール写真`} width={112} height={112} />
+                    <span className="shout-copy">
+                      <span className="shout-body">{shout.body}</span>
+                      <span className="shout-meta">
+                        <span>{profile.name} · {profile.height}cm · {profile.weight}kg · {profile.age}歳</span>
+                        <span>{elapsedLabel(shout.elapsedMinutes)}</span>
+                      </span>
                     </span>
-                  </span>
-                </button>
-                <div className="shout-action">
-                  <button
-                    className={`meet-button${isSent ? ' sent' : ''}`}
-                    type="button"
-                    aria-label={isSent ? `${profile.name}に「会いたい」送信済み` : `${profile.name}に「会いたい」を送る`}
-                    aria-disabled={isSent}
-                    aria-haspopup="dialog"
-                    onClick={(event) => {
-                      if (isSent) return;
-                      if (!isVipActive && sentProfileIds.length >= 1) {
-                        onRequireVip();
-                        return;
-                      }
-                      triggerRef.current = event.currentTarget;
-                      setPendingProfile(profile);
-                    }}
-                  >
-                    <Heart size={24} fill={isSent ? 'currentColor' : 'none'} aria-hidden="true" />
                   </button>
-                  {isSent && <span className="meet-sent-label">送信済み</span>}
-                </div>
-              </article>
-            );
-          })}
+                  <div className="shout-action">
+                    <button
+                      className={`meet-button${isSent ? ' sent' : ''}`}
+                      type="button"
+                      aria-label={isSent ? `${profile.name}に「会いたい」送信済み` : `${profile.name}に「会いたい」を送る`}
+                      aria-disabled={isSent}
+                      aria-haspopup="dialog"
+                      onClick={(event) => {
+                        if (isSent) return;
+                        if (!isVipActive && sentProfileIds.length >= 1) {
+                          onRequireVip();
+                          return;
+                        }
+                        triggerRef.current = event.currentTarget;
+                        setPendingProfile(profile);
+                      }}
+                    >
+                      <Heart size={24} fill={isSent ? 'currentColor' : 'none'} aria-hidden="true" />
+                    </button>
+                    {isSent && <span className="meet-sent-label">送信済み</span>}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          {maskNotice}
         </div>
       </div>
 

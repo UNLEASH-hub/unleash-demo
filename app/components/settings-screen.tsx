@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { Bell, ChevronRight, CircleHelp, Crown, LogOut, Pencil, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { Bell, CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, Crown, LogOut, Pencil, ShieldCheck, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import ProfileEditScreen, { type EditableProfile } from './profile-edit-screen';
 
 type SettingsScreenProps = {
   initialName: string;
@@ -10,26 +11,41 @@ type SettingsScreenProps = {
   isVipActive: boolean;
   onToggleVip: () => void;
   onLogout: () => void;
+  onEditingChange: (editing: boolean) => void;
 };
 
-export default function SettingsScreen({ initialName, photoPreview, isVipActive, onToggleVip, onLogout }: SettingsScreenProps) {
-  const [name, setName] = useState(initialName || 'You');
+export default function SettingsScreen({ initialName, photoPreview, isVipActive, onToggleVip, onLogout, onEditingChange }: SettingsScreenProps) {
+  const [profile, setProfile] = useState<EditableProfile>(() => ({
+    name: initialName || 'You',
+    photos: [photoPreview || '/assets/profiles/kenji.png', null, null, null],
+    age: 32, height: 170, weight: 65,
+    bio: 'UNLEASHユーザー', sexuality: 'ゲイ', position: 'リバ', purposes: [], tags: [],
+  }));
   const [editing, setEditing] = useState(false);
-  const [draftName, setDraftName] = useState(name);
-  const [age, setAge] = useState('32');
-  const [height, setHeight] = useState('170');
-  const [weight, setWeight] = useState('65');
+  const [notice, setNotice] = useState('');
   const [pushNotifications, setPushNotifications] = useState(true);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const wasEditingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasEditingRef.current && !editing) editButtonRef.current?.focus({ preventScroll: true });
+    wasEditingRef.current = editing;
+  }, [editing]);
 
   const togglePushNotifications = () => setPushNotifications((current) => !current);
 
-  const saveProfile = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const nextName = draftName.trim();
-    if (!nextName) return;
-    setName(nextName);
+  const closeEditor = () => {
     setEditing(false);
+    onEditingChange(false);
   };
+
+  if (editing) {
+    return <ProfileEditScreen profile={profile} onCancel={closeEditor} onSave={(nextProfile) => {
+      setProfile(nextProfile);
+      setNotice('プロフィールを保存しました');
+      closeEditor();
+    }} />;
+  }
 
   return (
     <section className="feature-screen settings-screen" aria-labelledby="settings-title">
@@ -42,16 +58,17 @@ export default function SettingsScreen({ initialName, photoPreview, isVipActive,
           <span className="vip-pass-icon">{isVipActive ? <Crown size={24} aria-hidden="true" /> : <Sparkles size={24} aria-hidden="true" />}</span>
           <span className="vip-pass-copy">
             <strong>{isVipActive ? 'VIPパス利用中' : 'VIPパスで機能を解放'}</strong>
-            <small>{isVipActive ? 'タップでOFFにできます（デモ）' : '目隠し・任意位置・通知解除・イベント作成が使えます'}</small>
+            <small>{isVipActive ? 'タップでOFFにできます（デモ）' : '目隠し中も周囲を閲覧・任意位置・通知解除・イベント作成'}</small>
           </span>
           <span className="vip-pass-state">{isVipActive ? 'ON' : 'OFF'}</span>
         </button>
 
         <article className="settings-profile">
-          {photoPreview ? <span className="settings-photo" style={{ backgroundImage: `url(${photoPreview})` }} /> : <Image src="/assets/profiles/kenji.png" alt="プロフィール写真" width={160} height={160} />}
-          <div><h2>{name}</h2><p>{age}歳 · {height}cm · {weight}kg</p>{isVipActive && <span>VIPパス利用中</span>}</div>
-          <button type="button" aria-label="プロフィールを編集" onClick={() => { setDraftName(name); setEditing(true); }}><Pencil size={17} /></button>
+          {profile.photos[0] ? <Image src={profile.photos[0]} alt="プロフィール写真" width={160} height={160} unoptimized /> : <span className="settings-photo settings-photo-empty"><CircleUserRound size={36} aria-hidden="true" /></span>}
+          <div><h2>{profile.name}</h2><p>{profile.age}歳 · {profile.height}cm · {profile.weight}kg</p>{isVipActive && <span>VIPパス利用中</span>}</div>
+          <button ref={editButtonRef} type="button" aria-label="プロフィールを編集" onClick={() => { setNotice(''); setEditing(true); onEditingChange(true); }}><Pencil size={17} /></button>
         </article>
+        {notice && <p className="settings-save-notice" role="status"><CheckCircle2 size={16} aria-hidden="true" />{notice}</p>}
 
         <section className="settings-group" aria-labelledby="privacy-settings">
           <h2 id="privacy-settings">通知とプライバシー</h2>
@@ -67,22 +84,6 @@ export default function SettingsScreen({ initialName, photoPreview, isVipActive,
         <p className="app-version">UNLEASH prototype · v0.2</p>
       </div>
 
-      {editing && (
-        <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setEditing(false)}>
-          <form className="detail-sheet edit-profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title" onSubmit={saveProfile}>
-            <button className="sheet-close" type="button" aria-label="編集を閉じる" onClick={() => setEditing(false)}><X size={20} /></button>
-            <p className="eyebrow">PROFILE</p>
-            <h2 id="profile-edit-title">プロフィール編集</h2>
-            <label><span>ユーザー名</span><input value={draftName} onChange={(event) => setDraftName(event.target.value)} required /></label>
-            <div className="edit-profile-grid">
-              <label><span>年齢</span><input type="number" min="18" max="99" value={age} onChange={(event) => setAge(event.target.value)} /></label>
-              <label><span>身長</span><input type="number" min="140" max="210" value={height} onChange={(event) => setHeight(event.target.value)} /></label>
-              <label><span>体重</span><input type="number" min="40" max="150" value={weight} onChange={(event) => setWeight(event.target.value)} /></label>
-            </div>
-            <button className="sheet-action" type="submit">変更を保存</button>
-          </form>
-        </div>
-      )}
     </section>
   );
 }

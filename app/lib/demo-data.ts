@@ -44,6 +44,7 @@ export type EventItem = {
   time: string;
   area: string;
   category: EventCategory;
+  address: string;
   attendees: number;
   description: string;
   accent: string;
@@ -172,28 +173,35 @@ export const shouts: Shout[] = [
   },
 ];
 
+// All demo events use Yoyogi Park as their placeholder meeting address.
+const demoEventAddress = '東京都渋谷区代々木神園町2-1（代々木公園）';
+
 export const events: EventItem[] = [
   {
     id: 'rooftop-social', title: 'ルーフトップ交流会', date: '10月4日（土）', time: '19:00',
     area: '渋谷', category: '飲み会', attendees: 28,
+    address: demoEventAddress,
     description: '夜景を眺めながら、少人数のテーブルでゆっくり話せる交流会です。初参加の方も歓迎します。',
     accent: 'linear-gradient(135deg, #0868ed, #2dd6dd)',
   },
   {
     id: 'morning-walk', title: '朝の代々木公園ウォーク', date: '10月12日（日）', time: '09:30',
     area: '代々木', category: 'アクティビティ', attendees: 16,
+    address: demoEventAddress,
     description: 'コーヒーを片手に、公園をのんびり一周します。歩きやすい服装で気軽にどうぞ。',
     accent: 'linear-gradient(135deg, #09a8ac, #6fdb8c)',
   },
   {
     id: 'film-night', title: '短編映画ナイト', date: '10月18日（土）', time: '18:30',
     area: '新宿', category: 'ナイト', attendees: 34,
+    address: demoEventAddress,
     description: '話題の短編作品を観たあと、ドリンクを楽しみながら感想をシェアする夜です。',
     accent: 'linear-gradient(135deg, #6752dc, #318df4)',
   },
   {
     id: 'coffee-meetup', title: 'はじめましてのコーヒー会', date: '10月26日（日）', time: '14:00',
     area: '恵比寿', category: 'カフェ', attendees: 12,
+    address: demoEventAddress,
     description: '8〜12名ほどの小さな会です。プロフィールカードをきっかけに自然に会話できます。',
     accent: 'linear-gradient(135deg, #eb8e55, #f6c56e)',
   },

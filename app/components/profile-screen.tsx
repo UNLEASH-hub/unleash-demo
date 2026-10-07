@@ -21,8 +21,9 @@ import {
   ShieldCheck,
   Tag,
   Wine,
+  X,
 } from 'lucide-react';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { getProfile, type ProfileReview } from '../lib/demo-data';
 
 type ProfileScreenProps = {
@@ -55,6 +56,17 @@ export default function ProfileScreen({
   const [notice, setNotice] = useState('');
   const [reviewDraft, setReviewDraft] = useState('');
   const [reviews, setReviews] = useState<ProfileReview[]>(profile.reviews);
+  const [expandedPhoto, setExpandedPhoto] = useState<{ src: string; alt: string } | null>(null);
+  const photoDialogRef = useRef<HTMLDialogElement>(null);
+  const photoTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const dialog = photoDialogRef.current;
+    if (!dialog) return;
+    if (expandedPhoto && !dialog.open) dialog.showModal();
+    else if (!expandedPhoto && dialog.open) dialog.close();
+  }, [expandedPhoto]);
+
   const displayTags = useMemo(() => {
     const defaults = ['ジム', 'カフェ', 'お酒', '旅行', '犬派', '音楽', 'ゲーム', 'アニメ'];
     const merged = [...profile.badges, ...defaults].slice(0, 8);
@@ -93,7 +105,12 @@ export default function ProfileScreen({
       <div className="user-profile-scroll">
         <section className="profile-hero-card">
           <div className="profile-hero-top">
-            <Image className="profile-main-photo" src={profile.image} alt={`${profile.name}のメイン写真`} width={220} height={220} priority />
+            <button className="profile-photo-button" type="button" aria-label={`${profile.name}のメイン写真を拡大`} aria-haspopup="dialog" onClick={(event) => {
+              photoTriggerRef.current = event.currentTarget;
+              setExpandedPhoto({ src: profile.image, alt: `${profile.name}のメイン写真` });
+            }}>
+              <Image className="profile-main-photo" src={profile.image} alt={`${profile.name}のメイン写真`} width={220} height={220} priority />
+            </button>
             <div className="profile-quick-actions" aria-label="プロフィール操作">
               <button className="profile-round-action message" type="button" onClick={() => onMessage(profile.id)}>
                 <MessageCircle size={30} />
@@ -146,7 +163,12 @@ export default function ProfileScreen({
           </div>
           <div className="profile-photo-row" aria-label="プロフィール写真">
             {profile.subPhotos.map((photo, index) => (
-              <Image key={`${photo}-${index}`} src={photo} alt={`${profile.name}のサブ写真${index + 1}`} width={220} height={220} />
+              <button key={`${photo}-${index}`} className="profile-photo-button" type="button" aria-label={`${profile.name}のサブ写真${index + 1}を拡大`} aria-haspopup="dialog" onClick={(event) => {
+                photoTriggerRef.current = event.currentTarget;
+                setExpandedPhoto({ src: photo, alt: `${profile.name}のサブ写真${index + 1}` });
+              }}>
+                <Image src={photo} alt={`${profile.name}のサブ写真${index + 1}`} width={220} height={220} />
+              </button>
             ))}
           </div>
         </section>
@@ -172,6 +194,25 @@ export default function ProfileScreen({
 
         {notice && <p className="profile-notice" role="status"><CheckCircle2 size={16} />{notice}</p>}
       </div>
+      <dialog
+        ref={photoDialogRef}
+        className="profile-photo-dialog"
+        aria-label={expandedPhoto ? `${expandedPhoto.alt}の拡大表示` : '写真の拡大表示'}
+        onCancel={(event) => {
+          event.preventDefault();
+          setExpandedPhoto(null);
+        }}
+        onClose={() => {
+          setExpandedPhoto(null);
+          photoTriggerRef.current?.focus({ preventScroll: true });
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setExpandedPhoto(null);
+        }}
+      >
+        <button className="profile-photo-close" type="button" aria-label="拡大写真を閉じる" onClick={() => setExpandedPhoto(null)}><X size={24} aria-hidden="true" /></button>
+        {expandedPhoto && <Image src={expandedPhoto.src} alt={expandedPhoto.alt} width={1200} height={1200} sizes="(max-width: 924px) calc(100vw - 24px), 900px" />}
+      </dialog>
     </section>
   );
 }

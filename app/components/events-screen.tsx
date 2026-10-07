@@ -2,11 +2,10 @@
 
 import { CalendarDays, Check, MapPin, Plus, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { events, type EventCategory, type EventItem } from '../lib/demo-data';
+import { events, type EventItem } from '../lib/demo-data';
 import EventCreationFlow from './event-creation-flow';
 
 type EventView = 'recommended' | 'joined';
-type EventFilter = 'すべて' | EventCategory;
 
 type EventsScreenProps = {
   isVipActive: boolean;
@@ -14,11 +13,8 @@ type EventsScreenProps = {
   onCreationModeChange: (active: boolean) => void;
 };
 
-const eventFilters: EventFilter[] = ['すべて', '飲み会', 'カフェ', '食事会', '遊び', 'アクティビティ', 'ナイト'];
-
 export default function EventsScreen({ isVipActive, onRequireVip, onCreationModeChange }: EventsScreenProps) {
   const [view, setView] = useState<EventView>('recommended');
-  const [filter, setFilter] = useState<EventFilter>('すべて');
   const [joinedIds, setJoinedIds] = useState<string[]>(['morning-walk']);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [showPreflight, setShowPreflight] = useState(false);
@@ -32,11 +28,8 @@ export default function EventsScreen({ isVipActive, onRequireVip, onCreationMode
     if (showPreflight) closePreflightRef.current?.focus({ preventScroll: true });
   }, [showPreflight]);
 
-  const filteredEvents = events.filter((event) => {
-    const matchesView = view === 'recommended' || joinedIds.includes(event.id);
-    const matchesFilter = filter === 'すべて' || event.category === filter;
-    return matchesView && matchesFilter;
-  });
+  const visibleEvents = events.filter((event) => view === 'recommended' || joinedIds.includes(event.id));
+  const isSelectedEventJoined = selectedEvent !== null && joinedIds.includes(selectedEvent.id);
 
   const toggleJoined = (eventId: string) => {
     setJoinedIds((current) => current.includes(eventId) ? current.filter((id) => id !== eventId) : [...current, eventId]);
@@ -91,23 +84,15 @@ export default function EventsScreen({ isVipActive, onRequireVip, onCreationMode
         <button className={view === 'joined' ? 'active' : ''} type="button" onClick={() => setView('joined')}>参加予定 <span>{joinedIds.length}</span></button>
       </div>
 
-      <div className="filter-scroll" aria-label="イベントカテゴリ">
-        {eventFilters.map((category) => (
-          <button key={category} className={filter === category ? 'active' : ''} type="button" aria-pressed={filter === category} onClick={() => setFilter(category)}>
-            {category}
-          </button>
-        ))}
-      </div>
-
       <div className="feature-scroll event-list">
-        {filteredEvents.length === 0 ? (
+        {visibleEvents.length === 0 ? (
           <div className="empty-state">
             <CalendarDays size={30} />
             <h2>参加予定はまだありません</h2>
             <p>おすすめから気になるイベントを見つけましょう。</p>
             <button type="button" onClick={() => setView('recommended')}>おすすめを見る</button>
           </div>
-        ) : filteredEvents.map((event) => {
+        ) : visibleEvents.map((event) => {
           const isJoined = joinedIds.includes(event.id);
           return (
             <article key={event.id} className="event-card">
@@ -141,9 +126,15 @@ export default function EventsScreen({ isVipActive, onRequireVip, onCreationMode
             <p className="eyebrow">{selectedEvent.date} · {selectedEvent.time}</p>
             <h2 id="event-detail-title">{selectedEvent.title}</h2>
             <p className="detail-location"><MapPin size={15} />{selectedEvent.area}エリア</p>
+            {isSelectedEventJoined ? (
+              <div className="detail-address">
+                <strong>住所（参加者限定）</strong>
+                <p>{selectedEvent.address}</p>
+              </div>
+            ) : <p className="detail-address-locked">住所は参加者のみに公開されます。</p>}
             <p className="detail-description">{selectedEvent.description}</p>
-            <button className={`sheet-action ${joinedIds.includes(selectedEvent.id) ? 'secondary' : ''}`} type="button" onClick={() => toggleJoined(selectedEvent.id)}>
-              {joinedIds.includes(selectedEvent.id) ? '参加をキャンセル' : 'このイベントに参加する'}
+            <button className={`sheet-action ${isSelectedEventJoined ? 'secondary' : ''}`} type="button" onClick={() => toggleJoined(selectedEvent.id)}>
+              {isSelectedEventJoined ? '参加をキャンセル' : 'このイベントに参加する'}
             </button>
           </section>
         </div>

@@ -23,6 +23,7 @@ export default function AppShell({ username, photoPreview, onLogout }: AppShellP
   const [requestedProfileId, setRequestedProfileId] = useState<string | null>(null);
   const [visibleOnMap, setVisibleOnMap] = useState(true);
   const [eventCreationActive, setEventCreationActive] = useState(false);
+  const [profileEditingActive, setProfileEditingActive] = useState(false);
   const [isVipActive, setIsVipActive] = useState(false);
   const [vipPromptOpen, setVipPromptOpen] = useState(false);
   const [mapVipResetKey, setMapVipResetKey] = useState(0);
@@ -43,7 +44,6 @@ export default function AppShell({ username, photoPreview, onLogout }: AppShellP
     setIsVipActive((current) => {
       const next = !current;
       if (!next) {
-        setVisibleOnMap(true);
         setMapFocusProfileId(null);
         setMapVipResetKey((key) => key + 1);
       }
@@ -112,6 +112,7 @@ export default function AppShell({ username, photoPreview, onLogout }: AppShellP
             isVipActive={isVipActive}
             onToggleVip={toggleVip}
             onLogout={onLogout}
+            onEditingChange={setProfileEditingActive}
           />
         </div>
         {viewingProfileId && (
@@ -137,12 +138,12 @@ export default function AppShell({ username, photoPreview, onLogout }: AppShellP
             <span className="vip-modal-icon"><Sparkles size={25} aria-hidden="true" /></span>
             <p className="eyebrow">VIP PASS</p>
             <h2 id="vip-modal-title">VIPパスで解放できます</h2>
-            <p>目隠しモード、任意位置、イベント作成、通知のぼかし解除、「会いたい」無制限が使えるようになります。</p>
+            <p>目隠し中も周囲のユーザーを閲覧できるほか、任意位置、イベント作成、通知のぼかし解除、「会いたい」無制限が使えるようになります。</p>
             <button className="sheet-action" type="button" onClick={goToVipSettings}>VIPパスを確認</button>
           </section>
         </div>
       )}
-      {!viewingProfileId && !(activeSection === 'events' && eventCreationActive) && (
+      {!viewingProfileId && !(activeSection === 'events' && eventCreationActive) && !(activeSection === 'settings' && profileEditingActive) && (
         <BottomNavigation activeSection={activeSection} unreadCount={unreadCount} onChange={changeSection} />
       )}
     </div>
